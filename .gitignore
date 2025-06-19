@@ -1,0 +1,6 @@
+build*/
+.code-workspace
+.vscode/
+workspace.code-workspace
+*.zip
+curso-nrf-zephyr-fund.code-workspace
