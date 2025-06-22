@@ -26,6 +26,7 @@ static struct k_timer sample_timer;
 static bool sampling_enabled;
 
 static bool adv_enabled;
+static struct k_work adv_work;
 
 static const struct device *bmp280;
 
@@ -98,23 +99,35 @@ static void button0_pressed_isr(const struct device *dev, struct gpio_callback *
     }
 }
 
-static void button1_pressed_isr(const struct device *dev, struct gpio_callback *cb,
-                                uint32_t pins)
+static void adv_work_handler(struct k_work *work)
 {
     int err;
 
     if (adv_enabled) {
-        return;
-    }
+        err = bt_le_adv_stop();
+        if (err) {
+            LOG_ERR("Failed to stop advertising (%d)", err);
+            return;
+        }
 
-    err = bt_le_adv_start(&adv_param, ad, ARRAY_SIZE(ad), NULL, 0);
-    if (err) {
-        LOG_ERR("Advertising failed to start (%d)", err);
-        return;
-    }
+        adv_enabled = false;
+        LOG_INF("Advertising stopped");
+    } else {
+        err = bt_le_adv_start(&adv_param, ad, ARRAY_SIZE(ad), NULL, 0);
+        if (err) {
+            LOG_ERR("Advertising failed to start (%d)", err);
+            return;
+        }
 
-    adv_enabled = true;
-    LOG_INF("Advertising started");
+        adv_enabled = true;
+        LOG_INF("Advertising started");
+    }
+}
+
+static void button1_pressed_isr(const struct device *dev, struct gpio_callback *cb,
+                                uint32_t pins)
+{
+    k_work_submit(&adv_work);
 }
 
 void advertising_led_thread(void)
@@ -164,6 +177,7 @@ int main(void)
     gpio_add_callback(button1.port, &button1_cb_data);
 
     k_work_init(&sample_work, sample_work_handler);
+    k_work_init(&adv_work, adv_work_handler);
     k_timer_init(&sample_timer, sample_timer_handler, NULL);
 
     err = bt_enable(NULL);
