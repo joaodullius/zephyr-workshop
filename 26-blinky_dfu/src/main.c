@@ -1,7 +1,6 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/device.h>
-#include <zephyr/sys/printk.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/logging/log.h>
@@ -55,10 +54,10 @@ static void connected(struct bt_conn *conn, uint8_t err)
 	char addr[BT_ADDR_LE_STR_LEN];
 
 	if (err) {
-		LOG_INF("Connection failed (err %u)\n", err);
+		LOG_INF("Connection failed (err %u)", err);
 		return;
 	} else if (bt_conn_get_info(conn, &info)) {
-		LOG_INF("Could not parse connection info\n");
+		LOG_INF("Could not parse connection info");
 	} else {
 		bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
@@ -90,11 +89,11 @@ static void bt_ready(int err)
 	size_t count = 1;
 
 	if (err) {
-		printk("Bluetooth init failed (err %d)\n", err);
+		LOG_ERR("Bluetooth init failed (err %d)", err);
 		return;
 	}
 
-	printk("Bluetooth initialized\n");
+	LOG_INF("Bluetooth initialized");
 
 	/* Start advertising */
 
@@ -106,7 +105,7 @@ static void bt_ready(int err)
 			      sd, ARRAY_SIZE(sd));
 #endif
 	if (err) {
-		printk("Advertising failed to start (err %d)\n", err);
+		LOG_ERR("Advertising failed to start (err %d)", err);
 		return;
 	}
 
@@ -120,17 +119,17 @@ static void bt_ready(int err)
 	bt_id_get(&addr, &count);
 	bt_addr_le_to_str(&addr, addr_s, sizeof(addr_s));
 
-	printk("Beacon started, advertising as %s\n", addr_s);
+	LOG_INF("Beacon started, advertising as %s", addr_s);
 }
 
 int main(void)
 {
     int err;
 
-    printk("Inicializando Blinky DFU\n");
+    LOG_INF("Inicializando Blinky DFU");
 
     if (!device_is_ready(led0.port) || !device_is_ready(led1.port)) {
-        printk("Erro: LED não está pronto\n");
+        LOG_ERR("Erro: LED não está pronto");
         return -1;
     }
 
@@ -141,7 +140,7 @@ int main(void)
 
 	err = bt_enable(bt_ready);
 	if (err) {
-		printk("Bluetooth init failed (err %d)\n", err);
+		LOG_ERR("Bluetooth init failed (err %d)", err);
 	}
 	return 0;
 }
