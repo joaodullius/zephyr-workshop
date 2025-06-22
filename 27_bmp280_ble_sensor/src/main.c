@@ -30,18 +30,55 @@ static struct k_work adv_work;
 
 static const struct device *bmp280;
 
-static uint8_t manuf_data[4];
+#define DEVICE_NAME CONFIG_BT_DEVICE_NAME
+#define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
 
-static const struct bt_le_adv_param adv_param =
-    BT_LE_ADV_PARAM_INIT(BT_LE_ADV_OPT_USE_IDENTITY,
-                         BT_GAP_ADV_FAST_INT_MIN_2,
-                         BT_GAP_ADV_FAST_INT_MAX_2,
-                         NULL);
+
+static uint8_t manuf_data[4];
 
 static struct bt_data ad[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, BT_LE_AD_NO_BREDR),
     BT_DATA(BT_DATA_MANUFACTURER_DATA, manuf_data, sizeof(manuf_data)),
 };
+
+/* Set Scan Response data */
+static const struct bt_data sd[] = {
+	BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
+};
+
+static void connected(struct bt_conn *conn, uint8_t err)
+{
+	struct bt_conn_info info;
+	char addr[BT_ADDR_LE_STR_LEN];
+
+	if (err) {
+		LOG_INF("Connection failed (err %u)", err);
+		return;
+	} else if (bt_conn_get_info(conn, &info)) {
+		LOG_INF("Could not parse connection info");
+	} else {
+		bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+
+		LOG_INF("Connection established!");
+		LOG_INF("Connected to: %s", addr);
+		LOG_INF("Role: %u", info.role);
+		LOG_INF("Connection interval: %u", info.le.interval);
+		LOG_INF("Slave latency: %u", info.le.latency);
+		LOG_INF("Connection supervisory timeout: %u", info.le.timeout);
+	}
+}
+
+static void disconnected(struct bt_conn *conn, uint8_t reason)
+{
+	LOG_INF("Disconnected (reason %u)", reason);
+	// Additional disconnection handling code
+}
+
+static struct bt_conn_cb conn_callbacks = {
+	.connected = connected,
+	.disconnected = disconnected,
+};
+
 
 static void sample_work_handler(struct k_work *work)
 {
@@ -113,7 +150,13 @@ static void adv_work_handler(struct k_work *work)
         adv_enabled = false;
         LOG_INF("Advertising stopped");
     } else {
-        err = bt_le_adv_start(&adv_param, ad, ARRAY_SIZE(ad), NULL, 0);
+	/* Start advertising */
+		err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad),
+			      sd, ARRAY_SIZE(sd));
+	if (err) {
+		LOG_ERR("Advertising failed to start (err %d)", err);
+		return;
+	}
         if (err) {
             LOG_ERR("Advertising failed to start (%d)", err);
             return;
@@ -180,6 +223,8 @@ int main(void)
     k_work_init(&adv_work, adv_work_handler);
     k_timer_init(&sample_timer, sample_timer_handler, NULL);
 
+
+	bt_conn_cb_register(&conn_callbacks);
     err = bt_enable(NULL);
     if (err) {
         LOG_ERR("Bluetooth init failed (%d)", err);
