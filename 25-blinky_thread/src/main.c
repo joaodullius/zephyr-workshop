@@ -1,7 +1,9 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/device.h>
-#include <zephyr/sys/printk.h>
+#include <zephyr/logging/log.h>
+
+LOG_MODULE_REGISTER(blinky_thread, LOG_LEVEL_INF);
 
 #define LED0_NODE DT_ALIAS(led0)
 #define LED1_NODE DT_ALIAS(led1)
@@ -35,10 +37,10 @@ K_THREAD_DEFINE(led1_tid, STACK_SIZE, thread_led1, NULL, NULL, NULL, PRIORITY, 0
 
 int main(void)
 {
-    printk("Inicializando LEDs...\n");
+    LOG_INF("Inicializando LEDs...");
 
     if (!device_is_ready(led0.port) || !device_is_ready(led1.port)) {
-        printk("Erro: LED não está pronto\n");
+        LOG_ERR("Erro: LED não está pronto");
         return -1;
     }
 
