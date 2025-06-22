@@ -1,9 +1,11 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/device.h>
-#include <zephyr/sys/printk.h>
+#include <zephyr/logging/log.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
+
+LOG_MODULE_REGISTER(blinky_thread_ble, LOG_LEVEL_INF);
 
 #define LED0_NODE DT_ALIAS(led0)
 #define LED1_NODE DT_ALIAS(led1)
@@ -48,10 +50,10 @@ int main(void)
 {
     int err;
 
-    printk("Inicializando LEDs e Bluetooth...\n");
+    LOG_INF("Inicializando LEDs e Bluetooth...");
 
     if (!device_is_ready(led0.port) || !device_is_ready(led1.port)) {
-        printk("Erro: LED não está pronto\n");
+        LOG_ERR("Erro: LED não está pronto");
         return -1;
     }
 
@@ -60,13 +62,13 @@ int main(void)
 
     err = bt_enable(NULL);
     if (err) {
-        printk("Bluetooth init failed (%d)\n", err);
+        LOG_ERR("Bluetooth init failed (%d)", err);
         return -1;
     }
 
     err = bt_le_adv_start(&adv_param, ad, ARRAY_SIZE(ad), NULL, 0);
     if (err) {
-        printk("Advertising failed to start (%d)\n", err);
+        LOG_ERR("Advertising failed to start (%d)", err);
         return -1;
     }
 
