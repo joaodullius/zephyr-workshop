@@ -129,21 +129,33 @@ static ssize_t write_blink(struct bt_conn *conn, const struct bt_gatt_attr *attr
     if (led2_blink_ms == 0) {
         return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
     }
+    LOG_INF("LED2 blink interval set to %u ms", led2_blink_ms);
     k_timer_start(&led2_timer, K_MSEC(led2_blink_ms), K_MSEC(led2_blink_ms));
     return len;
 }
 
+
 BT_GATT_SERVICE_DEFINE(bmp_svc,
     BT_GATT_PRIMARY_SERVICE(&bmp_svc_uuid),
     BT_GATT_CHARACTERISTIC(&bmp_data_uuid.uuid,
-                          BT_GATT_CHRC_READ,
+                          BT_GATT_CHRC_READ | BT_GATT_CHRC_NOTIFY, // <-- Add NOTIFY
                           BT_GATT_PERM_READ,
                           read_bmp, NULL, NULL),
+    BT_GATT_CCC(NULL, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE), // <-- Add CCC descriptor
     BT_GATT_CHARACTERISTIC(&led2_blink_uuid.uuid,
                           BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
                           BT_GATT_PERM_READ | BT_GATT_PERM_WRITE,
                           read_blink, write_blink, NULL)
 );
+
+static void notify_bmp_data(void)
+{
+    uint8_t data[4];
+    sys_put_be16(last_temp_c, &data[0]);
+    sys_put_be16(last_press_hpa, &data[2]);
+    bt_gatt_notify(NULL, &bmp_svc.attrs[1], data, sizeof(data));
+}
+
 
 
 static void sample_work_handler(struct k_work *work)
@@ -180,6 +192,8 @@ static void sample_work_handler(struct k_work *work)
     if (adv_enabled) {
         bt_le_adv_update_data(ad, ARRAY_SIZE(ad), NULL, 0);
     }
+
+    notify_bmp_data(); // <-- Notify value to clients
 
     gpio_pin_set_dt(&led0, 1);
     k_msleep(100);
