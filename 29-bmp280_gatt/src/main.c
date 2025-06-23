@@ -6,6 +6,10 @@
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/byteorder.h>
+#include <zephyr/bluetooth/uuid.h>
+#include <zephyr/bluetooth/gatt.h>
+#include <sys/types.h>
+
 
 LOG_MODULE_REGISTER(bmp280_ble_sensor, LOG_LEVEL_INF);
 
